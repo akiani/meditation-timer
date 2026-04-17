@@ -72,10 +72,18 @@
       bottom: -10px;
       width: 2px; height: 2px;
       border-radius: 50%;
-      background: rgba(237, 232, 224, 0.35);
-      box-shadow: 0 0 4px rgba(237, 232, 224, 0.25);
       animation: rise linear infinite;
       opacity: 0;
+    }
+
+    .particle.p-cream {
+      background: rgba(237, 232, 224, 0.35);
+      box-shadow: 0 0 4px rgba(237, 232, 224, 0.25);
+    }
+
+    .particle.p-sand {
+      background: rgba(184, 154, 110, 0.32);
+      box-shadow: 0 0 4px rgba(184, 154, 110, 0.25);
     }
 
     @keyframes rise {
@@ -616,9 +624,227 @@
       margin: 0 2px;
       color: var(--text);
     }
+
+    /* ══════════════════════════════════════════
+       Light Mode — Headspace-style warm sunrise
+       ══════════════════════════════════════════ */
+    body.light {
+      --bg:             #FDF3E3;
+      --ring-track:     rgba(45, 31, 20, 0.14);
+      --ring:           #E86A1A;
+      --ring-glow:      rgba(232, 106, 26, 0.42);
+      --accent:         #B83F12;
+      --text:           #241810;
+      --muted:          #6E5A3E;
+      --pill-bg:        rgba(255, 255, 255, 0.62);
+      --pill-border:    rgba(45, 31, 20, 0.15);
+      --pill-active-bg: rgba(232, 106, 26, 0.12);
+      --pill-active-bd: rgba(232, 106, 26, 0.55);
+    }
+
+    body.light::before {
+      background:
+        radial-gradient(ellipse 85% 58% at 50% 20%, rgba(255, 188, 116, 0.45) 0%, transparent 62%),
+        radial-gradient(ellipse 50% 45% at 12% 88%, rgba(255, 170, 120, 0.22) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 88% 78%, rgba(255, 220, 170, 0.28) 0%, transparent 60%);
+    }
+
+    /* Cleaner readability — stats at full opacity in light mode */
+    body.light .stats { opacity: 1; }
+
+    body.light .orb {
+      background: radial-gradient(
+        circle at 42% 38%,
+        rgba(255, 174, 102, 0.50) 0%,
+        rgba(232, 106, 26, 0.24) 38%,
+        rgba(255, 210, 160, 0.10) 68%,
+        transparent 100%
+      );
+    }
+
+    body.light .orb-ring { border-color: rgba(232, 106, 26, 0.18); }
+    body.light .ring-deco { border-color: rgba(232, 106, 26, 0.22); }
+
+    body.light .ring-fill {
+      filter: drop-shadow(0 2px 10px rgba(232, 106, 26, 0.4));
+    }
+
+    body.light .time-digits {
+      text-shadow: 0 2px 22px rgba(232, 106, 26, 0.18);
+    }
+
+    body.light .btn-primary {
+      background: rgba(232, 106, 26, 0.14);
+      border-color: rgba(232, 106, 26, 0.42);
+      box-shadow: 0 4px 14px rgba(232, 106, 26, 0.18);
+    }
+
+    body.light .btn-primary:hover {
+      background: rgba(232, 106, 26, 0.22);
+      border-color: rgba(232, 106, 26, 0.6);
+      box-shadow: 0 6px 22px rgba(232, 106, 26, 0.28);
+    }
+
+    body.light .btn-sec {
+      background: rgba(255, 255, 255, 0.55);
+      border-color: rgba(45, 31, 20, 0.1);
+    }
+
+    body.light .btn-sec:hover { border-color: rgba(45, 31, 20, 0.22); }
+
+    body.light .completion { background: rgba(253, 243, 227, 0.92); }
+    body.light .completion-icon { border-color: rgba(232, 106, 26, 0.38); }
+    body.light .completion-again { border-color: rgba(232, 106, 26, 0.42); }
+    body.light .completion-again:hover {
+      background: rgba(232, 106, 26, 0.12);
+      border-color: rgba(232, 106, 26, 0.62);
+    }
+
+    body.light .track {
+      background: rgba(45, 31, 20, 0.06);
+      border-color: rgba(45, 31, 20, 0.08);
+    }
+
+    body.light .toggle input:checked ~ .track {
+      background: rgba(232, 106, 26, 0.22);
+      border-color: rgba(232, 106, 26, 0.48);
+    }
+
+    body.light .sep { background: rgba(45, 31, 20, 0.07); }
+
+    body.light .pattern-pill.active {
+      color: var(--accent);
+      border-color: rgba(217, 84, 30, 0.35);
+    }
+
+    body.light .pill:hover { border-color: rgba(45, 31, 20, 0.18); }
+
+    body.light .amb-pill.active {
+      color: var(--ring);
+      border-color: rgba(232, 106, 26, 0.38);
+    }
+
+    body.light .hotkeys kbd { border-color: rgba(45, 31, 20, 0.12); }
+
+    body.light .particle.p-cream {
+      background: rgba(255, 170, 120, 0.55);
+      box-shadow: 0 0 5px rgba(255, 170, 120, 0.35);
+    }
+
+    body.light .particle.p-sand {
+      background: rgba(232, 106, 26, 0.5);
+      box-shadow: 0 0 5px rgba(232, 106, 26, 0.35);
+    }
+
+    @keyframes logoShimmerLight {
+      0%,100% { color: var(--muted); text-shadow: 0 0 0 transparent; }
+      50%     { color: #7a6248; text-shadow: 0 2px 14px rgba(232, 106, 26, 0.22); }
+    }
+    body.light .logo { animation-name: logoShimmerLight; }
+
+    /* Cross-fade between themes */
+    body, body::before, .orb, .orb-ring, .ring-deco, .btn-primary, .btn-sec,
+    .pill, .pattern-pill, .amb-pill, .track, .completion, .theme-toggle,
+    .particle.p-cream, .particle.p-sand {
+      transition: background 0.6s ease, border-color 0.6s ease,
+                  color 0.6s ease, box-shadow 0.6s ease;
+    }
+
+    /* ══════════════════════════════════════════
+       Theme toggle button
+       ══════════════════════════════════════════ */
+    .theme-toggle {
+      position: fixed;
+      top: 20px;
+      right: 22px;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.3s, background 0.3s, border-color 0.3s, transform 0.5s;
+      z-index: 10;
+    }
+
+    .theme-toggle:hover {
+      color: var(--text);
+      border-color: rgba(255,255,255,0.16);
+      transform: rotate(18deg);
+    }
+
+    body.light .theme-toggle {
+      background: rgba(255,255,255,0.55);
+      border-color: rgba(45, 31, 20, 0.08);
+    }
+    body.light .theme-toggle:hover { border-color: rgba(45, 31, 20, 0.22); }
+
+    /* ══════════════════════════════════════════
+       Responsive — mobile
+       ══════════════════════════════════════════ */
+    @media (max-width: 520px) {
+      body {
+        overflow-y: auto;
+        overflow-x: hidden;
+        justify-content: flex-start;
+        padding: 22px 14px 34px;
+      }
+
+      .app { gap: 22px; }
+
+      .pattern-row, .ambient-row, .duration-row {
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .stage { width: 260px; height: 260px; }
+
+      .time-digits { font-size: 58px; }
+      .time-digits.prep { font-size: 92px; }
+
+      .stats { flex-wrap: wrap; gap: 14px; }
+      .stats .sep { display: none; }
+
+      .hotkeys { display: none; }
+
+      .theme-toggle {
+        top: 14px;
+        right: 14px;
+        width: 30px;
+        height: 30px;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .stage { width: 224px; height: 224px; }
+      .time-digits { font-size: 50px; }
+      .time-digits.prep { font-size: 78px; }
+      .duration-row { gap: 5px; }
+      .pill { padding: 4px 12px; font-size: 10.5px; }
+    }
+
+    /* Hide hotkey hint on touch devices regardless of width */
+    @media (hover: none) {
+      .hotkeys { display: none; }
+    }
   </style>
 </head>
 <body>
+
+<!-- Theme toggle -->
+<button class="theme-toggle" id="themeToggle" title="Toggle theme (T)" aria-label="Toggle light/dark theme">
+  <svg id="iconSun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="4"/>
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+  </svg>
+  <svg id="iconMoon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </svg>
+</button>
 
 <!-- Floating particles -->
 <div class="particles" id="particles"></div>
@@ -748,7 +974,7 @@
 </div>
 
 <div class="hotkeys">
-  <kbd>Space</kbd> start &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>Esc</kbd> close
+  <kbd>Space</kbd> start &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>T</kbd> theme &nbsp; <kbd>Esc</kbd> close
 </div>
 
 <script>
@@ -1202,9 +1428,7 @@ function spawnParticles(count = 18) {
     p.style.animationDuration = `${duration}s`;
     p.style.animationDelay = `${delay}s`;
     p.style.setProperty('--drift', `${drift}px`);
-    p.style.background = Math.random() > 0.6
-      ? 'rgba(184,154,110,0.32)'
-      : 'rgba(237,232,224,0.3)';
+    p.classList.add(Math.random() > 0.6 ? 'p-sand' : 'p-cream');
     layer.appendChild(p);
   }
 }
@@ -1547,6 +1771,38 @@ function closeCompletion() {
 againBtn.addEventListener('click', closeCompletion);
 
 // ══════════════════════════════════════════════════════════════════
+// Theme (light / dark)
+// ══════════════════════════════════════════════════════════════════
+const THEME_KEY = 'still.theme.v1';
+const themeToggle = $('themeToggle');
+const iconSun     = $('iconSun');
+const iconMoon    = $('iconMoon');
+
+function applyTheme(theme) {
+  const light = theme === 'light';
+  document.body.classList.toggle('light', light);
+  iconSun.style.display  = light ? 'none' : '';
+  iconMoon.style.display = light ? ''     : 'none';
+  themeToggle.title = light ? 'Switch to dark (T)' : 'Switch to light (T)';
+}
+
+function toggleTheme() {
+  const next = document.body.classList.contains('light') ? 'dark' : 'light';
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+}
+
+themeToggle.addEventListener('click', toggleTheme);
+
+// Read persisted preference, falling back to OS preference
+(function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved) return applyTheme(saved);
+  const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+  applyTheme(prefersLight ? 'light' : 'dark');
+})();
+
+// ══════════════════════════════════════════════════════════════════
 // Keyboard shortcuts
 // ══════════════════════════════════════════════════════════════════
 window.addEventListener('keydown', e => {
@@ -1556,6 +1812,8 @@ window.addEventListener('keydown', e => {
     togglePlay();
   } else if (e.key === 'r' || e.key === 'R') {
     resetTimer();
+  } else if (e.key === 't' || e.key === 'T') {
+    toggleTheme();
   } else if (e.key === 'Escape') {
     if (completion.classList.contains('show')) closeCompletion();
     else if (prepping) cancelPrep();
