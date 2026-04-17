@@ -1,0 +1,1575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Still — Meditation Timer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+SC:wght@300;400&family=Cormorant:ital,wght@0,300;1,300&family=Jost:wght@200;300;400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:             #0b0c0e;
+      --ring-track:     rgba(255, 255, 255, 0.05);
+      --ring:           #7a9e8e;
+      --ring-glow:      rgba(122, 158, 142, 0.45);
+      --accent:         #b89a6e;
+      --text:           #ede8e0;
+      --muted:          #4e5855;
+      --pill-bg:        rgba(255, 255, 255, 0.035);
+      --pill-border:    rgba(255, 255, 255, 0.07);
+      --pill-active-bg: rgba(122, 158, 142, 0.12);
+      --pill-active-bd: rgba(122, 158, 142, 0.38);
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Jost', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* Ambient depth — now slowly drifting */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: -10%;
+      background:
+        radial-gradient(ellipse 70% 55% at 50% 25%, rgba(122,158,142,0.05) 0%, transparent 65%),
+        radial-gradient(ellipse 45% 40% at 15% 85%, rgba(184,154,110,0.04) 0%, transparent 60%),
+        radial-gradient(ellipse 55% 45% at 85% 75%, rgba(80,100,130,0.03) 0%, transparent 60%);
+      pointer-events: none;
+      animation: ambientDrift 60s ease-in-out infinite alternate;
+    }
+
+    @keyframes ambientDrift {
+      0%   { transform: translate(0, 0) scale(1); }
+      50%  { transform: translate(-2%, 1.5%) scale(1.03); }
+      100% { transform: translate(1.5%, -1%) scale(1.01); }
+    }
+
+    /* Floating particles */
+    .particles {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .particle {
+      position: absolute;
+      bottom: -10px;
+      width: 2px; height: 2px;
+      border-radius: 50%;
+      background: rgba(237, 232, 224, 0.35);
+      box-shadow: 0 0 4px rgba(237, 232, 224, 0.25);
+      animation: rise linear infinite;
+      opacity: 0;
+    }
+
+    @keyframes rise {
+      0%   { transform: translate(0, 0); opacity: 0; }
+      8%   { opacity: 0.6; }
+      90%  { opacity: 0.35; }
+      100% { transform: translate(var(--drift, 20px), -110vh); opacity: 0; }
+    }
+
+    /* ── Layout ───────────────────────────────── */
+    .app {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 28px;
+      position: relative;
+      z-index: 1;
+      animation: appFadeIn 1.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    @keyframes appFadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Logo — soft luminance pulse ──────────── */
+    .logo {
+      font-family: 'Cormorant SC', serif;
+      font-weight: 300;
+      font-size: 13px;
+      letter-spacing: 0.55em;
+      color: var(--muted);
+      text-transform: uppercase;
+      animation: logoShimmer 8s ease-in-out infinite;
+    }
+
+    @keyframes logoShimmer {
+      0%,100% { color: var(--muted); text-shadow: 0 0 0 transparent; }
+      50%     { color: #6a7472; text-shadow: 0 0 14px rgba(122,158,142,0.15); }
+    }
+
+    /* ── Pattern selector (small, above duration) ─ */
+    .pattern-row {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      opacity: 0.85;
+    }
+
+    .pattern-pill {
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 100px;
+      padding: 3px 11px;
+      font-family: 'Jost', sans-serif;
+      font-weight: 300;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      color: var(--muted);
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: color 0.3s, border-color 0.3s;
+    }
+
+    .pattern-pill:hover { color: var(--text); }
+    .pattern-pill.active {
+      color: var(--accent);
+      border-color: rgba(184,154,110,0.25);
+    }
+    .pattern-pill.disabled { opacity: 0.3; pointer-events: none; }
+
+    /* ── Duration Pills ───────────────────────── */
+    .duration-row {
+      display: flex;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .pill {
+      background: var(--pill-bg);
+      border: 1px solid var(--pill-border);
+      border-radius: 100px;
+      padding: 5px 15px;
+      font-family: 'Jost', sans-serif;
+      font-weight: 300;
+      font-size: 11.5px;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+      cursor: pointer;
+      transition: color 0.3s, border-color 0.3s, background 0.3s, transform 0.3s;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .pill:hover { color: var(--text); border-color: rgba(255,255,255,0.14); transform: translateY(-1px); }
+
+    .pill.active {
+      background: var(--pill-active-bg);
+      border-color: var(--pill-active-bd);
+      color: var(--ring);
+    }
+
+    .pill.disabled { opacity: 0.35; pointer-events: none; }
+
+    .custom-num {
+      background: none;
+      border: none;
+      outline: none;
+      font-family: 'Jost', sans-serif;
+      font-weight: 300;
+      font-size: 11.5px;
+      color: inherit;
+      width: 28px;
+      text-align: center;
+      -moz-appearance: textfield;
+    }
+    .custom-num::-webkit-inner-spin-button,
+    .custom-num::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    /* ── Timer Stage ──────────────────────────── */
+    .stage {
+      position: relative;
+      width: 300px;
+      height: 300px;
+    }
+
+    /* Breathing orb — animation driven by Web Animations API from JS */
+    .orb {
+      position: absolute;
+      inset: 24px;
+      border-radius: 50%;
+      background: radial-gradient(
+        circle at 42% 38%,
+        rgba(184,154,110,0.13) 0%,
+        rgba(122,158,142,0.07) 38%,
+        rgba(80,100,120,0.03) 68%,
+        transparent 100%
+      );
+      transform: scale(0.91);
+      opacity: 0.55;
+      transition: opacity 1.2s ease;
+    }
+
+    /* Orb outer glow ring — also JS-driven */
+    .orb-ring {
+      position: absolute;
+      inset: 14px;
+      border-radius: 50%;
+      border: 1px solid rgba(122,158,142,0.07);
+      box-shadow: 0 0 12px 0 rgba(122,158,142,0);
+      transition: box-shadow 1.2s ease;
+    }
+
+    /* SVG Progress Ring */
+    .ring-svg {
+      position: absolute;
+      inset: 0;
+      transform: rotate(-90deg);
+    }
+
+    .ring-track  { fill: none; stroke: var(--ring-track); stroke-width: 1.2; }
+    .ring-fill   {
+      fill: none;
+      stroke: var(--ring);
+      stroke-width: 1.2;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1s linear;
+      filter: drop-shadow(0 0 5px var(--ring-glow));
+    }
+
+    /* Decorative slow-rotating outer ring */
+    .ring-deco {
+      position: absolute;
+      inset: -8px;
+      border-radius: 50%;
+      border: 1px dashed rgba(122,158,142,0.09);
+      animation: decoRotate 120s linear infinite;
+      opacity: 0;
+      transition: opacity 1.6s ease;
+    }
+    .ring-deco.active { opacity: 1; }
+
+    @keyframes decoRotate {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    /* Time display */
+    .face {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    .time-digits {
+      font-family: 'Cormorant SC', serif;
+      font-weight: 300;
+      font-size: 68px;
+      line-height: 1;
+      letter-spacing: 0.03em;
+      color: var(--text);
+      text-shadow: 0 0 50px rgba(237,232,224,0.08);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .time-digits.prep {
+      font-size: 110px;
+      opacity: 0.9;
+      animation: prepPulse 1s ease-in-out;
+    }
+
+    @keyframes prepPulse {
+      0%   { opacity: 0.25; transform: scale(1.2); }
+      40%  { opacity: 1; transform: scale(1); }
+      100% { opacity: 0.85; transform: scale(1); }
+    }
+
+    .time-sub {
+      font-family: 'Jost', sans-serif;
+      font-weight: 200;
+      font-size: 9.5px;
+      letter-spacing: 0.35em;
+      color: var(--muted);
+      text-transform: uppercase;
+      transition: opacity 0.6s ease;
+    }
+
+    .breath-hint {
+      font-family: 'Cormorant', serif;
+      font-style: italic;
+      font-weight: 300;
+      font-size: 14px;
+      letter-spacing: 0.14em;
+      color: var(--accent);
+      opacity: 0;
+      transition: opacity 1.2s ease;
+      margin-top: 3px;
+      min-height: 18px;
+    }
+
+    .breath-hint.show { opacity: 0.7; }
+
+    /* ── Controls ─────────────────────────────── */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+    }
+
+    .btn {
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+      width: 58px;
+      height: 58px;
+      background: rgba(122,158,142,0.09);
+      border: 1px solid rgba(122,158,142,0.22);
+      color: var(--ring);
+      position: relative;
+    }
+
+    .btn-primary::after {
+      content: '';
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 1px solid rgba(122,158,142,0);
+      transition: border-color 0.5s ease, transform 0.5s ease;
+    }
+
+    .btn-primary:hover {
+      background: rgba(122,158,142,0.16);
+      border-color: rgba(122,158,142,0.42);
+      box-shadow: 0 0 28px rgba(122,158,142,0.14);
+    }
+
+    .btn-primary:hover::after {
+      border-color: rgba(122,158,142,0.18);
+      transform: scale(1.08);
+    }
+
+    .btn-primary:active { transform: scale(0.94); }
+
+    .btn-sec {
+      width: 38px;
+      height: 38px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      color: var(--muted);
+    }
+
+    .btn-sec:hover { color: var(--text); border-color: rgba(255,255,255,0.12); transform: translateY(-1px); }
+    .btn-sec:active { transform: scale(0.93); }
+
+    /* ── Ambient row ──────────────────────────── */
+    .ambient-row {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .amb-pill {
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 100px;
+      padding: 3px 11px;
+      font-family: 'Jost', sans-serif;
+      font-weight: 300;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      color: var(--muted);
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: color 0.3s, border-color 0.3s;
+    }
+
+    .amb-pill:hover { color: var(--text); }
+    .amb-pill.active {
+      color: var(--ring);
+      border-color: rgba(122,158,142,0.28);
+    }
+
+    /* ── Interval toggle ──────────────────────── */
+    .option-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .opt-label {
+      font-family: 'Jost', sans-serif;
+      font-weight: 300;
+      font-size: 10.5px;
+      letter-spacing: 0.18em;
+      color: var(--muted);
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .toggle { position: relative; width: 32px; height: 18px; cursor: pointer; }
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+
+    .track {
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 100px;
+      transition: all 0.3s;
+    }
+
+    .track::after {
+      content: '';
+      position: absolute;
+      width: 12px; height: 12px;
+      left: 2px; top: 2px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: all 0.3s;
+    }
+
+    .toggle input:checked ~ .track {
+      background: rgba(122,158,142,0.18);
+      border-color: rgba(122,158,142,0.38);
+    }
+
+    .toggle input:checked ~ .track::after {
+      transform: translateX(14px);
+      background: var(--ring);
+    }
+
+    /* ── Stats ────────────────────────────────── */
+    .stats {
+      display: flex;
+      gap: 22px;
+      align-items: center;
+      font-family: 'Jost', sans-serif;
+      font-weight: 300;
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      color: var(--muted);
+      text-transform: uppercase;
+      opacity: 0.7;
+      transition: opacity 0.6s ease;
+    }
+
+    .stats:hover { opacity: 1; }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .stat-value {
+      font-family: 'Cormorant SC', serif;
+      font-size: 20px;
+      color: var(--text);
+      letter-spacing: 0.05em;
+    }
+
+    .stat-value.flame {
+      color: var(--accent);
+    }
+
+    /* ── Completion overlay ───────────────────── */
+    .completion {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      background: rgba(11, 12, 14, 0.9);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 1.8s ease;
+      z-index: 200;
+    }
+
+    .completion.show {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .completion-icon {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      border: 1px solid rgba(122,158,142,0.28);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--ring);
+      animation: iconPulse 3.5s ease-in-out infinite;
+    }
+
+    @keyframes iconPulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(122,158,142,0.0); }
+      50%     { box-shadow: 0 0 0 14px rgba(122,158,142,0.07); }
+    }
+
+    .completion-title {
+      font-family: 'Cormorant SC', serif;
+      font-weight: 300;
+      font-size: 30px;
+      letter-spacing: 0.25em;
+      color: var(--text);
+      margin-top: 6px;
+    }
+
+    .completion-sub {
+      font-family: 'Cormorant', serif;
+      font-style: italic;
+      font-weight: 300;
+      font-size: 15px;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      max-width: 280px;
+      text-align: center;
+      line-height: 1.6;
+    }
+
+    .completion-streak {
+      margin-top: 8px;
+      font-family: 'Jost', sans-serif;
+      font-size: 10.5px;
+      letter-spacing: 0.25em;
+      color: var(--accent);
+      text-transform: uppercase;
+      opacity: 0;
+      transition: opacity 1.6s ease;
+    }
+    .completion-streak.show { opacity: 0.85; }
+
+    .completion-again {
+      margin-top: 18px;
+      padding: 9px 30px;
+      background: none;
+      border: 1px solid rgba(122,158,142,0.28);
+      border-radius: 100px;
+      font-family: 'Jost', sans-serif;
+      font-weight: 300;
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--ring);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .completion-again:hover {
+      background: rgba(122,158,142,0.09);
+      border-color: rgba(122,158,142,0.48);
+    }
+
+    /* ── Separator ────────────────────────────── */
+    .sep {
+      width: 1px;
+      height: 18px;
+      background: rgba(255,255,255,0.06);
+    }
+
+    /* ── Hotkey hint ──────────────────────────── */
+    .hotkeys {
+      position: fixed;
+      bottom: 18px;
+      right: 22px;
+      font-family: 'Jost', sans-serif;
+      font-size: 9px;
+      letter-spacing: 0.22em;
+      color: var(--muted);
+      text-transform: uppercase;
+      opacity: 0.35;
+      transition: opacity 0.4s;
+      z-index: 2;
+    }
+    .hotkeys:hover { opacity: 0.8; }
+    .hotkeys kbd {
+      font-family: inherit;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 4px;
+      padding: 1px 5px;
+      margin: 0 2px;
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+
+<!-- Floating particles -->
+<div class="particles" id="particles"></div>
+
+<!-- Completion overlay -->
+<div class="completion" id="completion">
+  <div class="completion-icon">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 6L9 17l-5-5"/>
+    </svg>
+  </div>
+  <div class="completion-title">Complete</div>
+  <div class="completion-sub">May you carry this stillness into the rest of your day.</div>
+  <div class="completion-streak" id="completionStreak"></div>
+  <button class="completion-again" id="againBtn">Sit Again</button>
+</div>
+
+<!-- Main app -->
+<div class="app">
+  <div class="logo">Still</div>
+
+  <!-- Breathing pattern selector -->
+  <div class="pattern-row" id="patternRow">
+    <button class="pattern-pill active" data-pat="natural">Natural</button>
+    <button class="pattern-pill" data-pat="coherent">Coherent</button>
+    <button class="pattern-pill" data-pat="box">Box 4·4·4·4</button>
+    <button class="pattern-pill" data-pat="four-seven-eight">4·7·8</button>
+  </div>
+
+  <!-- Duration selector -->
+  <div class="duration-row" id="durationRow">
+    <button class="pill" data-m="5">5 min</button>
+    <button class="pill active" data-m="10">10 min</button>
+    <button class="pill" data-m="15">15 min</button>
+    <button class="pill" data-m="20">20 min</button>
+    <button class="pill" data-m="30">30 min</button>
+    <div class="sep"></div>
+    <button class="pill" id="customPill" data-m="custom">
+      <input class="custom-num" id="customInput" type="number" min="1" max="180" placeholder="—">
+      <span>min</span>
+    </button>
+  </div>
+
+  <!-- Timer stage -->
+  <div class="stage">
+    <div class="ring-deco" id="ringDeco"></div>
+    <div class="orb-ring" id="orbRing"></div>
+    <div class="orb" id="orb"></div>
+
+    <svg class="ring-svg" viewBox="0 0 300 300">
+      <circle class="ring-track" cx="150" cy="150" r="140"/>
+      <circle class="ring-fill"  cx="150" cy="150" r="140"
+        id="ringFill"
+        stroke-dasharray="879.65"
+        stroke-dashoffset="0"
+      />
+    </svg>
+
+    <div class="face">
+      <div class="time-digits" id="timeDigits">10:00</div>
+      <div class="time-sub" id="timeSub">remaining</div>
+      <div class="breath-hint" id="breathHint">breathe</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="btn btn-sec" id="resetBtn" title="Reset (R)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+        <path d="M3 3v5h5"/>
+      </svg>
+    </button>
+
+    <button class="btn btn-primary" id="playBtn" title="Start / Pause (Space)">
+      <svg id="iconPlay" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M8 5v14l11-7z"/>
+      </svg>
+      <svg id="iconPause" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none">
+        <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+      </svg>
+    </button>
+
+    <button class="btn btn-sec" id="bellBtn" title="Toggle interval bells">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        <line id="bellSlash" x1="2" y1="2" x2="22" y2="22" style="display:none"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Ambient sounds -->
+  <div class="ambient-row" id="ambientRow">
+    <button class="amb-pill active" data-amb="none">Silence</button>
+    <button class="amb-pill" data-amb="rain">Rain</button>
+    <button class="amb-pill" data-amb="ocean">Ocean</button>
+    <button class="amb-pill" data-amb="forest">Forest</button>
+  </div>
+
+  <!-- Interval bells toggle -->
+  <div class="option-row">
+    <span class="opt-label" id="toggleLabel">Interval Bells</span>
+    <label class="toggle">
+      <input type="checkbox" id="intervalToggle">
+      <span class="track"></span>
+    </label>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats" id="stats">
+    <div class="stat">
+      <div class="stat-value flame" id="streakVal">0</div>
+      <div>Day Streak</div>
+    </div>
+    <div class="sep"></div>
+    <div class="stat">
+      <div class="stat-value" id="totalVal">0</div>
+      <div>Total Min</div>
+    </div>
+    <div class="sep"></div>
+    <div class="stat">
+      <div class="stat-value" id="countVal">0</div>
+      <div>Sessions</div>
+    </div>
+  </div>
+</div>
+
+<div class="hotkeys">
+  <kbd>Space</kbd> start &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>Esc</kbd> close
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// Audio Engine
+// ══════════════════════════════════════════════════════════════════
+let audioCtx = null;
+
+function ctx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+// Singing bowl: inharmonic partials simulate real bowl resonance
+function playBowl(vol = 0.45, freqScale = 1.0, decaySec = 5.5) {
+  const c = ctx();
+  const now = c.currentTime;
+  const partials = [
+    { ratio: 1.000, gain: 0.52 },
+    { ratio: 2.756, gain: 0.26 },
+    { ratio: 5.404, gain: 0.13 },
+    { ratio: 8.933, gain: 0.06 },
+  ];
+  const fundamental = 228 * freqScale;
+
+  const masterGain = c.createGain();
+  masterGain.gain.setValueAtTime(vol, now);
+  masterGain.connect(c.destination);
+
+  partials.forEach(({ ratio, gain }, i) => {
+    const osc = c.createOscillator();
+    const g   = c.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.value = fundamental * ratio;
+    osc.detune.value = (Math.random() - 0.5) * 1.5;
+
+    osc.connect(g);
+    g.connect(masterGain);
+
+    const localDecay = decaySec * (1 + i * 0.18);
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(gain, now + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + localDecay);
+
+    osc.start(now);
+    osc.stop(now + localDecay + 0.05);
+  });
+}
+
+const playStartBell = () => {
+  playBowl(0.42, 1.00, 5.5);
+  setTimeout(() => playBowl(0.22, 1.50, 4.0), 750);
+};
+
+const playEndBell = () => {
+  playBowl(0.48, 0.88, 6.0);
+  setTimeout(() => playBowl(0.30, 0.72, 5.0), 850);
+  setTimeout(() => playBowl(0.18, 1.10, 4.0), 2000);
+};
+
+const playIntervalBell = () => playBowl(0.30, 1.25, 4.5);
+
+// Soft tick for prep countdown
+function playPrepTick() {
+  const c = ctx();
+  const now = c.currentTime;
+  const osc = c.createOscillator();
+  const g = c.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = 520;
+  osc.connect(g); g.connect(c.destination);
+  g.gain.setValueAtTime(0, now);
+  g.gain.linearRampToValueAtTime(0.08, now + 0.005);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+  osc.start(now); osc.stop(now + 0.4);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// Ambient soundscape — noise-based, generated in real time
+// ══════════════════════════════════════════════════════════════════
+const Ambient = (() => {
+  let nodes = [];
+  let activeTimers = [];
+  let kind = 'none';
+
+  function makeNoiseBuffer(seconds, type = 'white') {
+    const c = ctx();
+    const len = seconds * c.sampleRate;
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const data = buf.getChannelData(0);
+    if (type === 'white') {
+      for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    } else if (type === 'pink') {
+      // Paul Kellet's pink noise algorithm
+      let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+      for (let i = 0; i < len; i++) {
+        const white = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + white * 0.0555179;
+        b1 = 0.99332 * b1 + white * 0.0750759;
+        b2 = 0.96900 * b2 + white * 0.1538520;
+        b3 = 0.86650 * b3 + white * 0.3104856;
+        b4 = 0.55000 * b4 + white * 0.5329522;
+        b5 = -0.7616 * b5 - white * 0.0168980;
+        data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+        b6 = white * 0.115926;
+      }
+    } else if (type === 'brown') {
+      // Integrated white, leaky
+      let last = 0;
+      for (let i = 0; i < len; i++) {
+        const white = Math.random() * 2 - 1;
+        last = (last + 0.02 * white) / 1.02;
+        data[i] = last * 3.5;
+      }
+    }
+    return buf;
+  }
+
+  function loopSource(buffer) {
+    const c = ctx();
+    const src = c.createBufferSource();
+    src.buffer = buffer;
+    src.loop = true;
+    return src;
+  }
+
+  function stop() {
+    const c = ctx();
+    const now = c.currentTime;
+    nodes.forEach(n => {
+      if (n.gain) {
+        n.gain.gain.cancelScheduledValues(now);
+        n.gain.gain.setTargetAtTime(0, now, 0.8);
+      }
+    });
+    const toStop = nodes.slice();
+    setTimeout(() => {
+      toStop.forEach(n => {
+        try { if (n.src && n.src.stop) n.src.stop(); } catch(e) {}
+      });
+    }, 2400);
+    activeTimers.forEach(t => clearInterval(t));
+    activeTimers = [];
+    nodes = [];
+  }
+
+  function playRain() {
+    const c = ctx();
+    const now = c.currentTime;
+    const src = loopSource(makeNoiseBuffer(3, 'white'));
+    const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 600;
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass';  lp.frequency.value = 4800;
+    const gain = c.createGain(); gain.gain.value = 0; gain.gain.linearRampToValueAtTime(0.13, now + 1.5);
+    src.connect(hp); hp.connect(lp); lp.connect(gain); gain.connect(c.destination);
+    src.start();
+    nodes.push({ src, gain });
+
+    // Occasional drops — short filtered bursts
+    const dropTimer = setInterval(() => {
+      const cc = ctx();
+      const t = cc.currentTime;
+      const ds = cc.createBufferSource();
+      ds.buffer = makeNoiseBuffer(0.05, 'white');
+      const dhp = cc.createBiquadFilter(); dhp.type = 'bandpass';
+      dhp.frequency.value = 1200 + Math.random() * 1800;
+      dhp.Q.value = 8;
+      const dg = cc.createGain();
+      dg.gain.setValueAtTime(0, t);
+      dg.gain.linearRampToValueAtTime(0.08, t + 0.005);
+      dg.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+      ds.connect(dhp); dhp.connect(dg); dg.connect(cc.destination);
+      ds.start(t); ds.stop(t + 0.2);
+    }, 140);
+    activeTimers.push(dropTimer);
+  }
+
+  function playOcean() {
+    const c = ctx();
+    const now = c.currentTime;
+    const src = loopSource(makeNoiseBuffer(6, 'brown'));
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
+    const gain = c.createGain(); gain.gain.value = 0;
+    gain.gain.linearRampToValueAtTime(0.25, now + 2);
+    src.connect(lp); lp.connect(gain); gain.connect(c.destination);
+    src.start();
+
+    // Wave LFO — slow tremolo on gain
+    const lfo = c.createOscillator();
+    const lfoGain = c.createGain();
+    lfo.frequency.value = 0.12; // one wave every ~8.3s
+    lfoGain.gain.value = 0.12;
+    lfo.connect(lfoGain); lfoGain.connect(gain.gain);
+    lfo.start();
+
+    nodes.push({ src, gain }, { src: lfo });
+  }
+
+  function playForest() {
+    const c = ctx();
+    const now = c.currentTime;
+    const src = loopSource(makeNoiseBuffer(4, 'pink'));
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass';
+    bp.frequency.value = 1400; bp.Q.value = 0.6;
+    const gain = c.createGain(); gain.gain.value = 0;
+    gain.gain.linearRampToValueAtTime(0.08, now + 2);
+    src.connect(bp); bp.connect(gain); gain.connect(c.destination);
+    src.start();
+    nodes.push({ src, gain });
+
+    // Random birdsong chirps
+    const chirpTimer = setInterval(() => {
+      if (Math.random() > 0.4) return;
+      const cc = ctx();
+      const t = cc.currentTime;
+      const osc = cc.createOscillator();
+      const g = cc.createGain();
+      const baseFreq = 1800 + Math.random() * 2200;
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(baseFreq, t);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq * (0.7 + Math.random() * 0.8), t + 0.18);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.045, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+      osc.connect(g); g.connect(cc.destination);
+      osc.start(t); osc.stop(t + 0.3);
+
+      // Occasional second chirp
+      if (Math.random() > 0.5) {
+        setTimeout(() => {
+          const tt = cc.currentTime;
+          const o2 = cc.createOscillator();
+          const g2 = cc.createGain();
+          o2.type = 'sine';
+          o2.frequency.setValueAtTime(baseFreq * 1.1, tt);
+          o2.frequency.exponentialRampToValueAtTime(baseFreq * 0.85, tt + 0.15);
+          g2.gain.setValueAtTime(0, tt);
+          g2.gain.linearRampToValueAtTime(0.04, tt + 0.02);
+          g2.gain.exponentialRampToValueAtTime(0.0001, tt + 0.2);
+          o2.connect(g2); g2.connect(cc.destination);
+          o2.start(tt); o2.stop(tt + 0.25);
+        }, 180);
+      }
+    }, 2200);
+    activeTimers.push(chirpTimer);
+  }
+
+  function play(newKind) {
+    if (newKind === kind) return;
+    stop();
+    kind = newKind;
+    if (newKind === 'rain') playRain();
+    else if (newKind === 'ocean') playOcean();
+    else if (newKind === 'forest') playForest();
+  }
+
+  function current() { return kind; }
+
+  return { play, stop, current };
+})();
+
+// ══════════════════════════════════════════════════════════════════
+// Breathing pattern driver (Web Animations API)
+// ══════════════════════════════════════════════════════════════════
+// Patterns: each phase is [label, seconds]. Orb scale at phase end.
+// Phases: inhale, hold-full, exhale, hold-empty
+const PATTERNS = {
+  natural: {
+    label: 'Natural',
+    phases: [
+      { name: 'inhale',  sec: 4.6, scaleTo: 1.00, opacityTo: 1.00 },
+      { name: 'hold',    sec: 2.2, scaleTo: 1.00, opacityTo: 1.00 },
+      { name: 'exhale',  sec: 5.0, scaleTo: 0.87, opacityTo: 0.48 },
+      { name: 'rest',    sec: 2.2, scaleTo: 0.87, opacityTo: 0.48 },
+    ],
+  },
+  coherent: {
+    label: 'Coherent',
+    phases: [
+      { name: 'inhale', sec: 5.5, scaleTo: 1.00, opacityTo: 1.00 },
+      { name: 'exhale', sec: 5.5, scaleTo: 0.85, opacityTo: 0.45 },
+    ],
+  },
+  box: {
+    label: 'Box',
+    phases: [
+      { name: 'inhale', sec: 4, scaleTo: 1.00, opacityTo: 1.00 },
+      { name: 'hold',   sec: 4, scaleTo: 1.00, opacityTo: 1.00 },
+      { name: 'exhale', sec: 4, scaleTo: 0.85, opacityTo: 0.42 },
+      { name: 'rest',   sec: 4, scaleTo: 0.85, opacityTo: 0.42 },
+    ],
+  },
+  'four-seven-eight': {
+    label: '4·7·8',
+    phases: [
+      { name: 'inhale', sec: 4, scaleTo: 1.00, opacityTo: 1.00 },
+      { name: 'hold',   sec: 7, scaleTo: 1.00, opacityTo: 1.00 },
+      { name: 'exhale', sec: 8, scaleTo: 0.82, opacityTo: 0.38 },
+    ],
+  },
+};
+
+const PHASE_LABELS = {
+  inhale: 'breathe in',
+  hold:   'hold',
+  exhale: 'breathe out',
+  rest:   'pause',
+};
+
+const Breath = (() => {
+  let currentKey = 'natural';
+  let orbAnim = null;
+  let ringAnim = null;
+  let phaseTimer = null;
+
+  function keyframesFor(pattern) {
+    const total = pattern.phases.reduce((s, p) => s + p.sec, 0);
+    const orbFrames = [];
+    const ringFrames = [];
+    let elapsed = 0;
+    // Seed start — inherit last phase's end state so loop is seamless
+    const last = pattern.phases[pattern.phases.length - 1];
+    orbFrames.push({ offset: 0, transform: `scale(${last.scaleTo})`, opacity: last.opacityTo });
+    ringFrames.push({ offset: 0, boxShadow: '0 0 12px 0 rgba(122,158,142,0)' });
+    pattern.phases.forEach((p, idx) => {
+      elapsed += p.sec;
+      const off = Math.min(1, elapsed / total);
+      orbFrames.push({
+        offset: off,
+        transform: `scale(${p.scaleTo})`,
+        opacity: p.opacityTo,
+      });
+      const glow = p.name === 'inhale' || p.name === 'hold' ? 0.09 : 0.02;
+      ringFrames.push({
+        offset: off,
+        boxShadow: `0 0 ${32 + glow * 200}px ${glow * 60}px rgba(122,158,142,${glow})`,
+      });
+    });
+    return { orbFrames, ringFrames, totalMs: total * 1000 };
+  }
+
+  function start() {
+    stop();
+    const pattern = PATTERNS[currentKey];
+    const { orbFrames, ringFrames, totalMs } = keyframesFor(pattern);
+
+    orbAnim = orb.animate(orbFrames, {
+      duration: totalMs,
+      iterations: Infinity,
+      easing: 'ease-in-out',
+    });
+    ringAnim = orbRing.animate(ringFrames, {
+      duration: totalMs,
+      iterations: Infinity,
+      easing: 'ease-in-out',
+    });
+
+    breathHint.classList.add('show');
+    ringDeco.classList.add('active');
+    updatePhaseLabel();
+    phaseTimer = setInterval(updatePhaseLabel, 200);
+  }
+
+  function updatePhaseLabel() {
+    if (!orbAnim) return;
+    const pattern = PATTERNS[currentKey];
+    const total = pattern.phases.reduce((s, p) => s + p.sec, 0) * 1000;
+    const t = (orbAnim.currentTime % total) / 1000;
+    let acc = 0;
+    for (const p of pattern.phases) {
+      acc += p.sec;
+      if (t <= acc) {
+        const label = PHASE_LABELS[p.name] || p.name;
+        if (breathHint.textContent !== label) breathHint.textContent = label;
+        return;
+      }
+    }
+  }
+
+  function stop() {
+    if (orbAnim)  { orbAnim.cancel();  orbAnim = null;  }
+    if (ringAnim) { ringAnim.cancel(); ringAnim = null; }
+    if (phaseTimer) { clearInterval(phaseTimer); phaseTimer = null; }
+    breathHint.classList.remove('show');
+    ringDeco.classList.remove('active');
+  }
+
+  function setPattern(key) {
+    if (!PATTERNS[key]) return;
+    currentKey = key;
+    if (orbAnim) start(); // restart if currently running
+  }
+
+  function getPattern() { return currentKey; }
+
+  return { start, stop, setPattern, getPattern };
+})();
+
+// ══════════════════════════════════════════════════════════════════
+// Session storage — streak, total minutes
+// ══════════════════════════════════════════════════════════════════
+const STORAGE_KEY = 'still.sessions.v1';
+
+function loadSessions() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  catch { return []; }
+}
+
+function saveSession(minutes) {
+  const sessions = loadSessions();
+  sessions.push({ minutes, ts: Date.now() });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+  return sessions;
+}
+
+function computeStreak(sessions) {
+  if (!sessions.length) return 0;
+  const days = new Set(sessions.map(s => new Date(s.ts).toDateString()));
+  let streak = 0;
+  const d = new Date();
+  // Allow grace: if nothing today, start counting from yesterday
+  if (!days.has(d.toDateString())) d.setDate(d.getDate() - 1);
+  while (days.has(d.toDateString())) {
+    streak++;
+    d.setDate(d.getDate() - 1);
+  }
+  return streak;
+}
+
+function totalMinutes(sessions) {
+  return sessions.reduce((s, x) => s + x.minutes, 0);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// Particles
+// ══════════════════════════════════════════════════════════════════
+function spawnParticles(count = 18) {
+  const layer = document.getElementById('particles');
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const left = Math.random() * 100;
+    const duration = 22 + Math.random() * 26;
+    const delay = -Math.random() * duration;
+    const size = 1.2 + Math.random() * 2.2;
+    const drift = (Math.random() - 0.5) * 120;
+    p.style.left = `${left}%`;
+    p.style.width = `${size}px`;
+    p.style.height = `${size}px`;
+    p.style.animationDuration = `${duration}s`;
+    p.style.animationDelay = `${delay}s`;
+    p.style.setProperty('--drift', `${drift}px`);
+    p.style.background = Math.random() > 0.6
+      ? 'rgba(184,154,110,0.32)'
+      : 'rgba(237,232,224,0.3)';
+    layer.appendChild(p);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// State
+// ══════════════════════════════════════════════════════════════════
+const CIRC = 2 * Math.PI * 140;
+
+let selMinutes   = 10;
+let totalSec     = selMinutes * 60;
+let remainSec    = totalSec;
+let running      = false;
+let ticker       = null;
+let intervalOn   = false;
+let lastIntMark  = -1;
+
+// Preparation state
+let prepping     = false;
+let prepRemain   = 0;
+let prepTicker   = null;
+
+// ══════════════════════════════════════════════════════════════════
+// DOM
+// ══════════════════════════════════════════════════════════════════
+const $  = id => document.getElementById(id);
+const timeDigits   = $('timeDigits');
+const timeSub      = $('timeSub');
+const ringFill     = $('ringFill');
+const orb          = $('orb');
+const orbRing      = $('orbRing');
+const ringDeco     = $('ringDeco');
+const breathHint   = $('breathHint');
+const playBtn      = $('playBtn');
+const iconPlay     = $('iconPlay');
+const iconPause    = $('iconPause');
+const resetBtn     = $('resetBtn');
+const bellBtn      = $('bellBtn');
+const bellSlash    = $('bellSlash');
+const durationRow  = $('durationRow');
+const patternRow   = $('patternRow');
+const customPill   = $('customPill');
+const customInput  = $('customInput');
+const intervalTog  = $('intervalToggle');
+const ambientRow   = $('ambientRow');
+const completion   = $('completion');
+const completionStreak = $('completionStreak');
+const againBtn     = $('againBtn');
+const streakVal    = $('streakVal');
+const totalVal     = $('totalVal');
+const countVal     = $('countVal');
+
+const pills = [...durationRow.querySelectorAll('.pill:not(#customPill)')];
+const patternPills = [...patternRow.querySelectorAll('.pattern-pill')];
+const ambPills = [...ambientRow.querySelectorAll('.amb-pill')];
+
+// ══════════════════════════════════════════════════════════════════
+// Helpers
+// ══════════════════════════════════════════════════════════════════
+const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+
+function updateRing(remain, total) {
+  const pct    = total > 0 ? remain / total : 1;
+  const offset = CIRC * (1 - pct);
+  ringFill.style.strokeDasharray  = CIRC;
+  ringFill.style.strokeDashoffset = offset;
+}
+
+function draw() {
+  timeDigits.textContent = fmt(remainSec);
+  updateRing(remainSec, totalSec);
+}
+
+function lockSelection(locked) {
+  pills.forEach(p => p.classList.toggle('disabled', locked));
+  customPill.classList.toggle('disabled', locked);
+  customInput.disabled = locked;
+  patternPills.forEach(p => p.classList.toggle('disabled', locked));
+}
+
+function refreshStats() {
+  const sessions = loadSessions();
+  streakVal.textContent = computeStreak(sessions);
+  totalVal.textContent = totalMinutes(sessions);
+  countVal.textContent = sessions.length;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// Duration selection
+// ══════════════════════════════════════════════════════════════════
+function chooseDuration(minutes) {
+  if (running || prepping) return;
+  selMinutes  = minutes;
+  totalSec    = minutes * 60;
+  remainSec   = totalSec;
+  lastIntMark = -1;
+  draw();
+}
+
+pills.forEach(p => {
+  p.addEventListener('click', () => {
+    if (running || prepping) return;
+    pills.forEach(q => q.classList.remove('active'));
+    customPill.classList.remove('active');
+    p.classList.add('active');
+    chooseDuration(parseInt(p.dataset.m));
+  });
+});
+
+customInput.addEventListener('click', e => e.stopPropagation());
+
+customPill.addEventListener('click', () => {
+  if (running || prepping) return;
+  customInput.focus();
+});
+
+function applyCustom() {
+  const v = parseInt(customInput.value);
+  if (!v || v < 1 || v > 180) return;
+  pills.forEach(p => p.classList.remove('active'));
+  customPill.classList.add('active');
+  chooseDuration(v);
+}
+
+customInput.addEventListener('change', applyCustom);
+customInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { applyCustom(); customInput.blur(); }
+  e.stopPropagation();
+});
+
+// ══════════════════════════════════════════════════════════════════
+// Pattern selection
+// ══════════════════════════════════════════════════════════════════
+patternPills.forEach(p => {
+  p.addEventListener('click', () => {
+    if (prepping) return;
+    patternPills.forEach(q => q.classList.remove('active'));
+    p.classList.add('active');
+    Breath.setPattern(p.dataset.pat);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════
+// Ambient selection
+// ══════════════════════════════════════════════════════════════════
+ambPills.forEach(p => {
+  p.addEventListener('click', () => {
+    ambPills.forEach(q => q.classList.remove('active'));
+    p.classList.add('active');
+    const kind = p.dataset.amb;
+    if (kind === 'none') Ambient.stop();
+    else Ambient.play(kind);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════
+// Interval bell check
+// ══════════════════════════════════════════════════════════════════
+function checkIntervalBell() {
+  if (!intervalOn || remainSec <= 0) return;
+  const elapsed = totalSec - remainSec;
+  if (elapsed <= 0 || elapsed % 60 !== 0) return;
+  const elapsedMin = elapsed / 60;
+  if (elapsedMin % 5 === 0 && elapsedMin !== lastIntMark) {
+    lastIntMark = elapsedMin;
+    playIntervalBell();
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// Tick (main session)
+// ══════════════════════════════════════════════════════════════════
+function tick() {
+  if (remainSec <= 0) { complete(); return; }
+  remainSec--;
+  draw();
+  checkIntervalBell();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// Preparation countdown
+// ══════════════════════════════════════════════════════════════════
+function startPrep() {
+  prepping = true;
+  prepRemain = 5;
+  lockSelection(true);
+  iconPlay.style.display  = 'none';
+  iconPause.style.display = '';
+  timeSub.textContent = 'settle in';
+  renderPrep();
+  prepTicker = setInterval(() => {
+    prepRemain--;
+    if (prepRemain <= 0) {
+      clearInterval(prepTicker); prepTicker = null;
+      timeDigits.classList.remove('prep');
+      timeSub.textContent = 'remaining';
+      prepping = false;
+      actuallyStart();
+    } else {
+      renderPrep();
+    }
+  }, 1000);
+}
+
+function renderPrep() {
+  timeDigits.classList.add('prep');
+  // Force reflow to retrigger animation
+  void timeDigits.offsetWidth;
+  timeDigits.classList.add('prep');
+  timeDigits.textContent = String(prepRemain);
+  // Retrigger pulse
+  timeDigits.style.animation = 'none';
+  void timeDigits.offsetWidth;
+  timeDigits.style.animation = '';
+  playPrepTick();
+}
+
+function cancelPrep() {
+  if (!prepping) return;
+  clearInterval(prepTicker); prepTicker = null;
+  prepping = false;
+  timeDigits.classList.remove('prep');
+  timeSub.textContent = 'remaining';
+  lockSelection(false);
+  iconPlay.style.display  = '';
+  iconPause.style.display = 'none';
+  draw();
+}
+
+function actuallyStart() {
+  running = true;
+  Breath.start();
+  playStartBell();
+  ticker = setInterval(tick, 1000);
+  draw();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// Complete
+// ══════════════════════════════════════════════════════════════════
+function complete() {
+  clearInterval(ticker); ticker = null;
+  running = false;
+  Breath.stop();
+  lockSelection(false);
+  iconPlay.style.display  = '';
+  iconPause.style.display = 'none';
+  playEndBell();
+
+  // Save session, update stats
+  const sessions = saveSession(selMinutes);
+  refreshStats();
+  const streak = computeStreak(sessions);
+  completionStreak.textContent = streak > 1
+    ? `${streak}-day streak`
+    : streak === 1 ? 'first of your streak' : '';
+
+  setTimeout(() => {
+    completion.classList.add('show');
+    setTimeout(() => completionStreak.classList.add('show'), 800);
+  }, 600);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// Play / Pause
+// ══════════════════════════════════════════════════════════════════
+function togglePlay() {
+  if (prepping) { cancelPrep(); return; }
+  if (remainSec <= 0) return;
+
+  if (running) {
+    // Pause
+    clearInterval(ticker); ticker = null;
+    running = false;
+    Breath.stop();
+    lockSelection(false);
+    iconPlay.style.display  = '';
+    iconPause.style.display = 'none';
+  } else {
+    // Start / resume
+    const fresh = remainSec === totalSec;
+    if (fresh) {
+      startPrep();
+    } else {
+      running = true;
+      Breath.start();
+      lockSelection(true);
+      iconPlay.style.display  = 'none';
+      iconPause.style.display = '';
+      ticker = setInterval(tick, 1000);
+    }
+  }
+}
+
+playBtn.addEventListener('click', togglePlay);
+
+// ══════════════════════════════════════════════════════════════════
+// Reset
+// ══════════════════════════════════════════════════════════════════
+function resetTimer() {
+  clearInterval(ticker); ticker = null;
+  cancelPrep();
+  running = false;
+  Breath.stop();
+  lockSelection(false);
+  iconPlay.style.display  = '';
+  iconPause.style.display = 'none';
+  remainSec   = totalSec;
+  lastIntMark = -1;
+  draw();
+}
+resetBtn.addEventListener('click', resetTimer);
+
+// ══════════════════════════════════════════════════════════════════
+// Interval bell toggle
+// ══════════════════════════════════════════════════════════════════
+function syncBellUI() {
+  bellSlash.style.display = intervalOn ? 'none' : '';
+  bellBtn.style.color     = intervalOn ? 'var(--ring)' : '';
+}
+
+intervalTog.addEventListener('change', () => { intervalOn = intervalTog.checked; syncBellUI(); });
+
+bellBtn.addEventListener('click', () => {
+  intervalOn = !intervalOn;
+  intervalTog.checked = intervalOn;
+  syncBellUI();
+});
+
+// ══════════════════════════════════════════════════════════════════
+// "Sit Again"
+// ══════════════════════════════════════════════════════════════════
+function closeCompletion() {
+  completion.classList.remove('show');
+  completionStreak.classList.remove('show');
+  remainSec   = totalSec;
+  lastIntMark = -1;
+  draw();
+}
+againBtn.addEventListener('click', closeCompletion);
+
+// ══════════════════════════════════════════════════════════════════
+// Keyboard shortcuts
+// ══════════════════════════════════════════════════════════════════
+window.addEventListener('keydown', e => {
+  if (document.activeElement === customInput) return;
+  if (e.key === ' ' || e.code === 'Space') {
+    e.preventDefault();
+    togglePlay();
+  } else if (e.key === 'r' || e.key === 'R') {
+    resetTimer();
+  } else if (e.key === 'Escape') {
+    if (completion.classList.contains('show')) closeCompletion();
+    else if (prepping) cancelPrep();
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════
+// Init
+// ══════════════════════════════════════════════════════════════════
+ringFill.style.strokeDasharray  = CIRC;
+ringFill.style.strokeDashoffset = 0;
+spawnParticles(22);
+refreshStats();
+draw();
+</script>
+</body>
+</html>
